@@ -161,6 +161,11 @@ Always reference Socrata datasets by ID (they're stable; names drift):
 - **Condo lots** are summarized to one record per condo complex by DCP. Don't try to split them back out.
 - **Empty strings vs nulls** in Socrata responses: always coerce `""` to `NULL` in the transformer.
 - **Mapbox vector tile size limit** (500 KB). Don't put all 870k MapPLUTO geometries in one tile — let Mapbox tile them server-side or use a hosted tileset.
+- Build was scaffolded on macOS 12 — Docker is unavailable, so production DB is Supabase Postgres. Schema migrations applied via Supabase SQL Editor, NOT prisma migrate.
+- .env lives only at repo root; symlinked into apps/web/ and apps/etl/ with `ln -s ../../.env .env`. Symlinks are gitignored.
+- apps/etl/pyproject.toml requires [build-system] with hatchling and [tool.hatch.build.targets.wheel] packages = ["etl"] — the project name doesn't match the package dir name.
+- psycopg 3 requires `async with conn.cursor() as cur:` before calling executemany.
+- Supabase reserves auth.users; our public.users coexists fine but expect minor friction with Supabase Auth if we use it later.
 
 ---
 
