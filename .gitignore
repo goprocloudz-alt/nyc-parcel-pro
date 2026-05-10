@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+.next/
+dist/
+out/
+*.tsbuildinfo
+
+# Environment — CLAUDE.md rule 1: never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Prisma generated client (reproducible from schema)
+apps/web/node_modules/.prisma/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo

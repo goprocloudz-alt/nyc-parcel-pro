@@ -1,0 +1,157 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis, citext, pgcrypto]
+}
+
+// ── App tables — fully managed by Prisma Migrate ──────────────────────────────
+
+model Agency {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String
+  logoUrl    String?   @map("logo_url")
+  plan       String    @default("pilot")
+  brandColor String?   @map("brand_color")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  // @updatedAt sets updated_at in the Prisma client; the set_updated_at() DB
+  // trigger (created by 0001_initial.sql) acts as a safety net for ETL writes.
+  updatedAt  DateTime  @updatedAt      @map("updated_at") @db.Timestamptz()
+  deletedAt  DateTime?                 @map("deleted_at") @db.Timestamptz()
+
+  users User[]
+
+  @@map("agencies")
+}
+
+model User {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agencyId        String    @map("agency_id") @db.Uuid
+  // Stored as TEXT; application MUST lowercase before every write and query.
+  // SCHEMA.md specifies CITEXT for DB-level case-insensitivity, but Prisma
+  // Client cannot type-safely query Unsupported columns. Application-layer
+  // normalization achieves equivalent uniqueness semantics for MVP. Revisit
+  // with a raw migration ALTER if we need DB-enforced case-insensitivity.
+  email           String    @unique
+  passwordHash    String?   @map("password_hash")
+  fullName        String?   @map("full_name")
+  role            String    @default("agent") // admin | agent
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz()
+  lastLoginAt     DateTime? @map("last_login_at") @db.Timestamptz()
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt       DateTime  @updatedAt      @map("updated_at") @db.Timestamptz()
+  deletedAt       DateTime?                 @map("deleted_at") @db.Timestamptz()
+
+  agency Agency @relation(fields: [agencyId], references: [id])
+
+  @@index([agencyId], name: "idx_users_agency")
+  @@map("users")
+}
+
+// ── NYC-data tables — managed by db/migrations/ raw SQL, NOT Prisma Migrate ───
+// @@ignore: Prisma skips these in schema diffs but models are still available
+// for $queryRaw<Property[]> calls from the web app.
+
+/// NYC parcels from PLUTO (dataset 64uk-42ks). Written by ETL, read by web app.
+model Property {
+  bbl             String   @id @db.Char(10)
+  borough         String   @db.Char(2)
+  block           Int
+  lot             Int
+  cd              Int?
+  councilDistrict Int?     @map("council_district")
+  zipCode         String?  @map("zip_code") @db.Char(5)
+  address         String?
+  ownerName       String?  @map("owner_name")
+
+  lotArea     Int? @map("lot_area")
+  bldgArea    Int? @map("bldg_area")
+  comArea     Int? @map("com_area")
+  resArea     Int? @map("res_area")
+  officeArea  Int? @map("office_area")
+  retailArea  Int? @map("retail_area")
+  garageArea  Int? @map("garage_area")
+  storageArea Int? @map("storage_area")
+  factoryArea Int? @map("factory_area")
+  otherArea   Int? @map("other_area")
+
+  numBldgs   Int?     @map("num_bldgs")
+  numFloors  Decimal? @map("num_floors") @db.Decimal(5, 2)
+  unitsRes   Int?     @map("units_res")
+  unitsTotal Int?     @map("units_total")
+  yearBuilt  Int?     @map("year_built")
+  yearAlter1 Int?     @map("year_alter1")
+  yearAlter2 Int?     @map("year_alter2")
+  bldgClass  String?  @map("bldg_class") @db.Char(2)
+  landUse    String?  @map("land_use") @db.Char(2)
+
+  lotFront  Decimal? @map("lot_front") @db.Decimal(8, 2)
+  lotDepth  Decimal? @map("lot_depth") @db.Decimal(8, 2)
+  bldgFront Decimal? @map("bldg_front") @db.Decimal(8, 2)
+  bldgDepth Decimal? @map("bldg_depth") @db.Decimal(8, 2)
+
+  zoneDist1 String?  @map("zone_dist1")
+  zoneDist2 String?  @map("zone_dist2")
+  zoneDist3 String?  @map("zone_dist3")
+  zoneDist4 String?  @map("zone_dist4")
+  overlay1  String?
+  overlay2  String?
+  specDist1 String?  @map("spec_dist1")
+  specDist2 String?  @map("spec_dist2")
+  ltdHeight String?  @map("ltd_height")
+  splitZone Boolean? @map("split_zone")
+
+  residFar Decimal? @map("resid_far") @db.Decimal(6, 2)
+  commFar  Decimal? @map("comm_far")  @db.Decimal(6, 2)
+  facilFar Decimal? @map("facil_far") @db.Decimal(6, 2)
+  builtFar Decimal? @map("built_far") @db.Decimal(6, 2)
+
+  assessLand Decimal? @map("assess_land") @db.Decimal(14, 2)
+  assessTot  Decimal? @map("assess_tot")  @db.Decimal(14, 2)
+  exemptTot  Decimal? @map("exempt_tot")  @db.Decimal(14, 2)
+
+  landmark  String?
+  easements Int?
+  ownerType String? @map("owner_type") @db.Char(1)
+  histDist  String? @map("hist_dist")
+
+  latitude  Decimal? @db.Decimal(10, 7)
+  longitude Decimal? @db.Decimal(10, 7)
+  // PostGIS geometry — not expressible as a Prisma scalar type.
+  // Spatial queries use prisma.$queryRaw with ST_* functions.
+  geom      Unsupported("geometry(MultiPolygon, 4326)")?
+
+  plutoVersion  String   @map("pluto_version")
+  sourceDataset String   @default("64uk-42ks") @map("source_dataset")
+  lastSyncedAt  DateTime @map("last_synced_at") @db.Timestamptz()
+
+  @@index([borough, block, lot], name: "idx_properties_borough_block_lot")
+  @@index([zipCode],             name: "idx_properties_zip")
+  @@index([bldgClass],           name: "idx_properties_bldg_class")
+  @@map("properties")
+  @@ignore
+}
+
+/// ETL run audit log (SCHEMA.md §3.5). Written by ETL worker via psycopg.
+model SyncLog {
+  id            BigInt    @id @default(autoincrement())
+  datasetId     String    @map("dataset_id")
+  datasetName   String    @map("dataset_name")
+  startedAt     DateTime  @map("started_at")   @db.Timestamptz()
+  completedAt   DateTime? @map("completed_at") @db.Timestamptz()
+  rowsFetched   Int?      @map("rows_fetched")
+  rowsUpserted  Int?      @map("rows_upserted")
+  rowsDeleted   Int?      @map("rows_deleted")
+  status        String    // running | success | failed
+  errorMessage  String?   @map("error_message")
+  highWatermark DateTime? @map("high_watermark") @db.Timestamptz()
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@index([datasetId, startedAt(sort: Desc)], name: "idx_sync_log_dataset")
+  @@map("sync_log")
+  @@ignore
+}

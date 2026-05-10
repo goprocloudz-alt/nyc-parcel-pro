@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: nyc_parcel_postgres
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:-nycparcel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nycparcel}
+      POSTGRES_DB:       ${POSTGRES_DB:-nycparcel_dev}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Runs 0001_initial.sql on first container start (creates extensions,
+      # properties, sync_log — the NYC-data tables Prisma does not manage).
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nycparcel}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: nyc_parcel_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # geosupport:
+  #   image: nycplanning/docker-geosupport:latest
+  #   container_name: nyc_parcel_geosupport
+  #   # TODO: Geosupport is a C shared-library, not a TCP service — it does not
+  #   # bind a port. To use it, the etl container needs to mount the library files
+  #   # from this image at build time, or use the NYC Geoclient REST API instead.
+  #   # Wire this up when address normalization is needed (ETL.md §7), after PLUTO
+  #   # ingest is confirmed working.
+
+volumes:
+  postgres_data:

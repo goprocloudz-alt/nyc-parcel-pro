@@ -1,0 +1,16 @@
+{
+  "name": "nyc-parcel-pro",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev":       "pnpm --filter @nyc-parcel-pro/web dev",
+    "build":     "pnpm --filter @nyc-parcel-pro/web build",
+    "typecheck": "pnpm -r typecheck",
+    "lint":      "pnpm -r lint",
+    "test":      "pnpm -r test"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
