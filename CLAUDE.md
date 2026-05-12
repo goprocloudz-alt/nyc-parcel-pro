@@ -168,6 +168,9 @@ Always reference Socrata datasets by ID (they're stable; names drift):
 - apps/etl/pyproject.toml requires [build-system] with hatchling and [tool.hatch.build.targets.wheel] packages = ["etl"] — the project name doesn't match the package dir name.
 - psycopg 3 requires `async with conn.cursor() as cur:` before calling executemany.
 - Supabase reserves auth.users; our public.users coexists fine but expect minor friction with Supabase Auth if we use it later.
+- The .env symlinks in apps/web/ and apps/etl/ are NOT in git (they're machine-specific). After any clone, recreate them:
+    cd apps/web && ln -s ../../.env .env
+    cd apps/etl && ln -s ../../.env .env
 
 ---
 
