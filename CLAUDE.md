@@ -72,7 +72,9 @@ pnpm prisma studio          # browse DB
 # ETL worker
 cd apps/etl
 uv sync
-uv run python -m etl.run --dataset=pluto --dry-run
+uv run python -m etl.run --dataset=pluto --limit=10000 --dry-run  # dev: fetch+transform, no DB
+uv run python -m etl.run --dataset=pluto --limit=10000             # dev: first 10k rows → Supabase
+uv run python -m etl.run --dataset=pluto                           # full PLUTO run (~870k rows)
 uv run python -m etl.run --all
 uv run pytest
 
